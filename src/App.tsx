@@ -34,22 +34,8 @@ const style = {
 };
 
 const TRACKING_ID = String(process.env.REACT_APP_TRACKING_ID)
-// const chains = [polygonMumbai];
 
-// const projectId = String(process.env.REACT_APP_WC_PROJECT_ID)
 
-// // Wagmi client
-// const { provider } = configureChains(chains, [
-//   walletConnectProvider({ projectId: projectId }),
-// ]);
-// const wagmiClient = createClient({
-//   autoConnect: true,
-//   connectors: modalConnectors({ appName: "web3Modal", chains }),
-//   provider,
-// });
-
-// // Web3Modal Ethereum Client
-// const ethereumClient = new EthereumClient(wagmiClient, chains);
 
 export default function App() {
   const [deployed, setDeployed] = React.useState(false);
@@ -61,6 +47,7 @@ export default function App() {
   const [response, setResponse] = React.useState("");
   const handleClose = () => setOpen(false);
   const { ready, authenticated, user, login } = usePrivy()
+
 
   function requestDeployToGateway(address: string) {
     const url = `${process.env.REACT_APP_GRAPHQL_GATEWAY_BASE_URL}/deploy`
