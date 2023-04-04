@@ -16,7 +16,7 @@ import Typography from '@mui/material/Typography';
 import ReactGA from 'react-ga';
 import { Rings } from 'react-loader-spinner'
 
-import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
+import { ApolloClient, InMemoryCache, ApolloProvider, HttpLink, ApolloLink } from '@apollo/client';
 
 const style = {
   position: 'absolute' as 'absolute',
@@ -35,69 +35,104 @@ const style = {
 
 const TRACKING_ID = String(process.env.REACT_APP_TRACKING_ID)
 
-
-
 export default function App() {
   const [deployed, setDeployed] = React.useState(false);
   const [uri, setUri] = React.useState('');
   const [contractAddress, setContractAddress] = React.useState<string | undefined>();
-  const projectId = String(process.env.REACT_APP_WC_PROJECT_ID)
-  // const { address } = useAccount()
   const [open, setOpen] = React.useState(false);
   const [response, setResponse] = React.useState("");
   const handleClose = () => setOpen(false);
   const { ready, authenticated, user, login } = usePrivy()
 
-
   function requestDeployToGateway(address: string) {
-    const url = `${process.env.REACT_APP_GRAPHQL_GATEWAY_BASE_URL}/deploy`
-    const payload = {
-      email: "todo-multi.cedalio.com",
-      schema: `type Todo {
+    getAuthToken(address)
+      .then((token) => {
+        
+        localStorage.setItem("auth_token", String(token));
+
+        const url = `${process.env.REACT_APP_GRAPHQL_GATEWAY_BASE_URL}/deploy`;
+
+        const payload = {
+          email: "todo-multi.cedalio.com",
+          schema: `type Todo {
             id: UUID!
             title: String!
             description: String
             priority: Int!
-            owner: String!
             tags: [String!]
             status: String
-          }
-          
-          `,
-      schema_owner: address,
-      network: "polygon:mumbai"
-    }
-    setOpen(true)
-    axios.post(
-      url, payload
-    ).then(function (response: any) {
-      localStorage.setItem('deploymentId', response.data.deployment_id);
-      localStorage.setItem('contractAddress', response.data.contract_address);
-      localStorage.setItem('deployed', 'true');
-      setContractAddress(response.data.contract_address)
-      setDeployed(true)
-      setOpen(false)
-      setResponse("success")
-      setUri(`${String(process.env.REACT_APP_GRAPHQL_GATEWAY_BASE_URL)}/${response.data.deployment_id}/graphql`)
-    })
+          }`,
+          schema_owner: address,
+          network: "polygon:mumbai",
+        };
+
+        setOpen(true);
+
+        axios
+          .post(url, payload, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+          .then(function (response: any) {
+            localStorage.setItem("deploymentId", response.data.deployment_id);
+            localStorage.setItem(
+              "contractAddress",
+              response.data.contract_address
+            );
+            localStorage.setItem("deployed", "true");
+            setContractAddress(response.data.contract_address);
+            setDeployed(true);
+            setOpen(false);
+            setResponse("success");
+            setUri(
+              `${process.env.REACT_APP_GRAPHQL_GATEWAY_BASE_URL}/${response.data.deployment_id}/graphql`
+            );
+          })
+          .catch(function (error: any) {
+            console.log(error);
+            setResponse("error");
+          });
+      })
       .catch(function (error: any) {
         console.log(error);
-        setResponse("error")
-      })
+        setResponse("error");
+      });
   }
 
-  function redeploy() {
+
+
+
+  async function redeploy() {
     setResponse("")
     if (user?.wallet?.address) {
       return requestDeployToGateway(String(user?.wallet?.address))
     }
   }
 
+  async function getAuthToken(address: string) {
+
+    const url = `${process.env.REACT_APP_GRAPHQL_GATEWAY_BASE_URL}/auth/privy`
+
+    //when using privy sdk the value is stored as string with ""
+    const privyToken = localStorage.getItem("privy:token")?.replaceAll('"', "");
+
+    const payload = {
+      "jwt": privyToken,
+      "account": address
+    }
+    const response =await axios.post(
+      url, payload
+    )
+    const token = response.data.token
+    return token
+    
+  }
+
   useEffect(() => {
     const deployed = Boolean(localStorage.getItem('deployed'))
     const contractAddress = localStorage.getItem('contractAddress')
     const deploymentId = localStorage.getItem('deploymentId')
-
     if (deployed && contractAddress && deploymentId) {
       setUri(`${String(process.env.REACT_APP_GRAPHQL_GATEWAY_BASE_URL)}/${deploymentId}/graphql`)
       setDeployed(deployed)
@@ -113,11 +148,27 @@ export default function App() {
     }
   }, [ready, authenticated])
 
+  const httpLink = new HttpLink({ uri: uri });
+  const authLink = new ApolloLink((operation, forward) => {
+    // Retrieve the authorization token from local storage.
+    const token = localStorage.getItem('auth_token');
+
+    // Use the setContext method to set the HTTP headers.
+    operation.setContext({
+      headers: {
+        authorization: token ? `Bearer ${token}` : ''
+      }
+    });
+
+    // Call the next link in the middleware chain.
+    return forward(operation);
+  });
+
   const client = new ApolloClient({
-    uri,
+    link: authLink.concat(httpLink), // Chain it with the HttpLink
     cache: new InMemoryCache({
-      addTypename: false,
-    }),
+      addTypename: false, //TODO this must be removed
+    })
   });
 
   ReactGA.initialize(TRACKING_ID);
