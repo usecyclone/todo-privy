@@ -93,7 +93,6 @@ export default function App() {
             localStorage.setItem("deployed", "true");
             bindPusherChannel(response.data.deployment_id)
             setContractAddress(response.data.contract_address);
-            setOpen(false);
             setResponse("success");
             setUri(
               `https://${process.env.REACT_APP_PROJECT_ID}.${process.env.REACT_APP_CEDALIO_DOMAIN}/${deploymentId}/graphql`
@@ -122,9 +121,11 @@ export default function App() {
         console.log(data)
          if (data.status === "Finished") {
             setDeployed(true);
+            setOpen(false);
           }
           else {
              console.log(data)
+             setOpen(false);
           }
       });
     }
