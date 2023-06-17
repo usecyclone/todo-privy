@@ -2,7 +2,7 @@
 
 [Join our Discord Community](https://discord.gg/kSdhmb9UUT)
 
-[![Deploy to Cedalio](https://cedalio.com/images/deploy-schema-button-small.png)](https://docs.cedalio.com/introduction/getting-started/download-the-cli)
+[![Deploy to Cedalio](https://cedalio.com/images/deploy-schema-button-small.png)]([https://docs.cedalio.com/introduction/getting-started/download-the-cli](https://docs.cedalio.com/studio/project))
 </br>
 
 ## Getting Started
