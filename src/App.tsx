@@ -93,7 +93,7 @@ export default function App() {
             setContractAddress(response.data.contract_address);
             setResponse("success");
             setUri(
-              `https://${process.env.REACT_APP_PROJECT_ID}.${process.env.REACT_APP_CEDALIO_DOMAIN}/${deploymentId}/graphql`
+              `https://${process.env.REACT_APP_PROJECT_ID}.${process.env.REACT_APP_CEDALIO_DOMAIN}/${response.data.deployment_id}/graphql`
             );
           })
           .catch(function (error: any) {
@@ -116,14 +116,12 @@ export default function App() {
       var channel = pusher.subscribe(channelName);
       console.log("binded",String(process.env.REACT_APP_PUSHER_KEY),channelName )
       channel.bind('deployment', function (data: any) {
-        console.log(data)
          if (data.status === "Finished") {
             setDeployed(true);
             setOpen(false);
           }
-          else {
-             console.log(data)
-             setOpen(false);
+          if (data.status && data.status.toLowerCase().includes("error")) {
+            setResponse("error")
           }
       });
     }
@@ -142,7 +140,6 @@ export default function App() {
 
     //when using privy sdk the value is stored as string with ""
     const privyToken = await getAccessToken()
-    console.log("TOKEN", privyToken)
 
     const payload = {
       "jwt": privyToken,
