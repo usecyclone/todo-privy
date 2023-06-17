@@ -50,8 +50,6 @@ export default function App() {
   function requestDeployToGateway(address: string) {
     getAuthToken(address)
       .then((token) => {
-        
-        localStorage.setItem("auth_token", String(token));
 
         const url = `https://${process.env.REACT_APP_PROJECT_ID}.${process.env.REACT_APP_CEDALIO_DOMAIN}/deploy`;
 
@@ -154,6 +152,7 @@ export default function App() {
       url, payload
     )
     const token = response.data.token
+    localStorage.setItem("auth_token", String(token));
     return token
     
   }
@@ -162,8 +161,10 @@ export default function App() {
     const deployed = Boolean(localStorage.getItem('deployed'))
     const deploymentId = localStorage.getItem('deploymentId')
     if (deployed && deploymentId) {
-      setUri(`https://${process.env.REACT_APP_PROJECT_ID}.${process.env.REACT_APP_CEDALIO_DOMAIN}/${deploymentId}/graphql`)
-      setDeployed(deployed)
+      getAuthToken(String(user?.wallet?.address)).then((token)=>{
+        setUri(`https://${process.env.REACT_APP_PROJECT_ID}.${process.env.REACT_APP_CEDALIO_DOMAIN}/${deploymentId}/graphql`)
+        setDeployed(deployed)
+      })
     }
     else if (ready && authenticated) {
       if (user?.wallet?.address) {
