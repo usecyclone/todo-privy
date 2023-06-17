@@ -16,6 +16,8 @@ import Typography from '@mui/material/Typography';
 import ReactGA from 'react-ga';
 import { Rings } from 'react-loader-spinner'
 
+import Pusher from 'pusher-js';
+
 import { ApolloClient, InMemoryCache, ApolloProvider, HttpLink, ApolloLink } from '@apollo/client';
 
 const style = {
@@ -42,7 +44,8 @@ export default function App() {
   const [open, setOpen] = React.useState(false);
   const [response, setResponse] = React.useState("");
   const handleClose = () => setOpen(false);
-  const { ready, authenticated, user, login } = usePrivy()
+  const { ready, authenticated, user, login, getAccessToken } = usePrivy()
+  let [deploymentId, setDeploymentId] = React.useState<string>()
 
   function requestDeployToGateway(address: string) {
     getAuthToken(address)
@@ -50,43 +53,50 @@ export default function App() {
         
         localStorage.setItem("auth_token", String(token));
 
-        const url = `${process.env.REACT_APP_GRAPHQL_GATEWAY_BASE_URL}/deploy`;
+        const url = `https://${process.env.REACT_APP_PROJECT_ID}.${process.env.REACT_APP_CEDALIO_DOMAIN}/deploy`;
 
-        const payload = {
-          email: "todo-multi.cedalio.com",
-          schema: `type Todo {
-            id: UUID!
-            title: String!
-            description: String
-            priority: Int!
-            tags: [String!]
-            status: String
-          }`,
-          schema_owner: address,
-          network: "polygon:mumbai",
-        };
+        // const payload = {
+        //   email: "todo-multi.cedalio.com",
+        //   schema: `type Todo @model{
+        //     title: String!
+        //     description: String
+        //     priority: Int!
+        //     tags: [String!]
+        //     "Posibles status, ready, done and deleted."
+        //     status: Status
+        //  }
+         
+        //  enum Status {
+        //    DONE
+        //    DELETED
+        //    READY
+        //  }`,
+        //   schema_owner: address,
+        //   network: "polygon:mumbai",
+        // };
 
         setOpen(true);
 
         axios
-          .post(url, payload, {
+          .post(url, {}, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           })
           .then(function (response: any) {
             localStorage.setItem("deploymentId", response.data.deployment_id);
-            localStorage.setItem(
-              "contractAddress",
-              response.data.contract_address
-            );
+            setDeploymentId(response.data.deployment_id)
+            // localStorage.setItem(
+              //   "contractAddress",
+              //   response.data.contract_address
+              // );
             localStorage.setItem("deployed", "true");
+            bindPusherChannel(response.data.deployment_id)
             setContractAddress(response.data.contract_address);
-            setDeployed(true);
             setOpen(false);
             setResponse("success");
             setUri(
-              `${process.env.REACT_APP_GRAPHQL_GATEWAY_BASE_URL}/${response.data.deployment_id}/graphql`
+              `https://${process.env.REACT_APP_PROJECT_ID}.${process.env.REACT_APP_CEDALIO_DOMAIN}/${deploymentId}/graphql`
             );
           })
           .catch(function (error: any) {
@@ -100,8 +110,25 @@ export default function App() {
       });
   }
 
-
-
+  function bindPusherChannel(deploymentId:string) {
+    var pusher = new Pusher(String(process.env.REACT_APP_PUSHER_KEY), {
+        cluster: 'us2'
+    });
+    if(deploymentId){
+      const channelName = String(deploymentId)
+      var channel = pusher.subscribe(channelName);
+      console.log("binded",String(process.env.REACT_APP_PUSHER_KEY),channelName )
+      channel.bind('deployment', function (data: any) {
+        console.log(data)
+         if (data.status === "Finished") {
+            setDeployed(true);
+          }
+          else {
+             console.log(data)
+          }
+      });
+    }
+}
 
   async function redeploy() {
     setResponse("")
@@ -112,10 +139,11 @@ export default function App() {
 
   async function getAuthToken(address: string) {
 
-    const url = `${process.env.REACT_APP_GRAPHQL_GATEWAY_BASE_URL}/auth/privy`
+    const url = `https://${process.env.REACT_APP_PROJECT_ID}.${process.env.REACT_APP_CEDALIO_DOMAIN}/auth/privy`
 
     //when using privy sdk the value is stored as string with ""
-    const privyToken = localStorage.getItem("privy:token")?.replaceAll('"', "");
+    const privyToken = await getAccessToken()
+    console.log("TOKEN", privyToken)
 
     const payload = {
       "jwt": privyToken,
@@ -131,12 +159,10 @@ export default function App() {
 
   useEffect(() => {
     const deployed = Boolean(localStorage.getItem('deployed'))
-    const contractAddress = localStorage.getItem('contractAddress')
     const deploymentId = localStorage.getItem('deploymentId')
-    if (deployed && contractAddress && deploymentId) {
-      setUri(`${String(process.env.REACT_APP_GRAPHQL_GATEWAY_BASE_URL)}/${deploymentId}/graphql`)
+    if (deployed && deploymentId) {
+      setUri(`https://${process.env.REACT_APP_PROJECT_ID}.${process.env.REACT_APP_CEDALIO_DOMAIN}/${deploymentId}/graphql`)
       setDeployed(deployed)
-      setContractAddress(contractAddress)
     }
     else if (ready && authenticated) {
       if (user?.wallet?.address) {
@@ -198,7 +224,6 @@ export default function App() {
         </div>
       )
     }
-
   }
 
   return (
