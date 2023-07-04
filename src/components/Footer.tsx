@@ -1,5 +1,4 @@
 export default function Footer(props:{ contractAddress: string | undefined}) {
-    const contractUrl = `${String(process.env.REACT_APP_NET_SCAN_BASE)}${props.contractAddress}`
     return (
         <footer>
             <div className="App-footer">
@@ -7,12 +6,6 @@ export default function Footer(props:{ contractAddress: string | undefined}) {
                 </div>
                 <div className="texts">
                     <p>This is a example ToDo app that show the power of Cedalio's technology. This is only a demo app using a Testnet. <strong>All the information here is stored in a smart contract</strong>. If you want to learn more please clic here. Or if you have some feedback please feel free to reach out us!</p>
-                    {props.contractAddress ?
-                        <div className="address">
-                            <p>Smart Contract Address:  <a href={contractUrl} target='_blank' rel="noreferrer">{props.contractAddress}</a></p>
-                            <img src="polygon.png" alt="polygon icon" />
-                        </div>
-                    : null}
                 </div>
                 <div className="branding">
                     <div className="logo">
