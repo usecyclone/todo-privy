@@ -114,13 +114,13 @@ export default function App() {
     if(deploymentId){
       const channelName = String(deploymentId)
       var channel = pusher.subscribe(channelName);
-      console.log("binded",String(process.env.REACT_APP_PUSHER_KEY),channelName )
-      channel.bind('deployment', function (data: any) {
-         if (data.status === "Finished") {
+      channel.bind('DEPLOYMENT_STATUS_UPDATE', function (data: any) {
+      
+         if (data.status === "READY") {
             setDeployed(true);
             setOpen(false);
           }
-          if (data.status && data.status.toLowerCase().includes("error")) {
+          if (data.status === "FAILED") {
             setResponse("error")
           }
       });
